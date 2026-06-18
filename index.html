@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="tr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matematik Kaşifi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+Arabic:wght@400;700;800&family=Noto+Sans+JP:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Nunito', 'Noto Sans JP', 'Noto Sans Arabic', sans-serif; overflow-x: hidden; }
+    [dir="rtl"] body, body[dir="rtl"] { font-family: 'Noto Sans Arabic', 'Nunito', sans-serif; }
+    .animate-spin-slow { animation: spin 12s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+    .grid-dots { background-image: radial-gradient(#e2e8f0 1.5px, transparent 1.5px); background-size: 16px 12px; }
+
+    .cell-size { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); }
+    @media (min-width:400px){ .cell-size{width:38px;height:38px;} }
+    @media (min-width:640px){ .cell-size{width:44px;height:44px;} }
+    @media (min-width:768px){ .cell-size{width:48px;height:48px;} }
+    @media (min-width:1024px){ .cell-size{width:52px;height:52px;} }
+
+    input[type="range"].custom-slider { -webkit-appearance:none; appearance:none; background:transparent; outline:none; }
+    input[type="range"].custom-slider::-webkit-slider-runnable-track { height:14px; background:linear-gradient(90deg,#3b82f6,#818cf8,#ec4899); border-radius:9999px; border:1px solid rgba(255,255,255,.2); }
+    input[type="range"].custom-slider::-moz-range-track { height:14px; background:linear-gradient(90deg,#3b82f6,#818cf8,#ec4899); border-radius:9999px; border:1px solid rgba(255,255,255,.2); }
+    input[type="range"].custom-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:24px; height:24px; border-radius:9999px; background:#4f46e5; border:3px solid #fff; cursor:pointer; margin-top:-5px; box-shadow:0 4px 10px rgba(79,70,229,.4); transition:transform .15s ease; }
+    input[type="range"].custom-slider::-moz-range-thumb { width:24px; height:24px; border-radius:9999px; background:#4f46e5; border:3px solid #fff; cursor:pointer; box-shadow:0 4px 10px rgba(79,70,229,.4); transition:transform .15s ease; box-sizing:border-box; }
+    input[type="range"].custom-slider::-webkit-slider-thumb:hover { transform:scale(1.2); }
+    input[type="range"].custom-slider::-moz-range-thumb:hover { transform:scale(1.2); }
+    .focusable:focus-visible { outline:3px solid #6366f1; outline-offset:2px; }
+
+    .vertical-slider-container { display:flex; align-items:center; justify-content:center; height:100%; width:44px; position:relative; }
+    .magic-glow { box-shadow:0 0 20px rgba(129,140,248,.3), inset 0 0 15px rgba(236,72,153,.1); }
+    .neon-pulse { animation:neonPulse 2s infinite alternate; }
+    @keyframes neonPulse { 0%{box-shadow:0 0 10px rgba(245,158,11,.6), inset 0 0 5px rgba(245,158,11,.2);} 100%{box-shadow:0 0 25px rgba(245,158,11,.9), inset 0 0 10px rgba(245,158,11,.4);} }
+    @keyframes dotPop { 0%{transform:scale(1);} 45%{transform:scale(1.55);} 100%{transform:scale(1.12);} }
+    .dot-counted { animation:dotPop .28s ease; }
+    @keyframes floatUp { 0%{opacity:0; transform:translate(-50%,-50%) scale(.5);} 25%{opacity:1;} 100%{opacity:0; transform:translate(-50%,-190%) scale(1.4);} }
+    .count-float { position:fixed; z-index:9999; pointer-events:none; font-weight:900; font-size:18px; color:#10b981; text-shadow:0 1px 3px rgba(0,0,0,.3); animation:floatUp .85s ease forwards; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 antialiased p-3 md:p-6 grid-dots">
+
+  <div id="app" class="max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200"></div>
+
+  <script>
+    /* ===================== ÇOK DİLLİ METİNLER (i18n) ===================== */
+    const LANGS = ['tr','en','es','de','ru','ja','ar'];
+
+    const I18N = {
+      tr: {
+        ui: {
+          langName:"Türkçe",
+          appTitle:"Matematik Kaşifi",
+          appSubtitle:"Rakamların birbiriyle olan bağlarını keşfet, zihinden çöz ve matematiği eğlenerek öğren!",
+          tabDiscovery:"İnteraktif Çarpım Tablosu", tabStrategy:"Zihinden Hesap Atölyesi",
+          consoleLabel:"Aktif Matematik Bağlantısı", row:"Satır", col:"Sütun", result:"Sonuç",
+          detailsShow:"\"{n}\" Sayısının Bilimsel Sırlarını Keşfet", detailsHide:"Bilimsel Detayları Gizle (Sade Görünüm)",
+          legendEasy:"Kolay (1, 2, 5, 10)", legendMedium:"Orta (3, 4)", legendAdvanced:"İleri (6, 7, 8, 9)", legendSquare:"Kare Sayı Hattı", legendLocked:"Kilitli Kesişim",
+          detailsTitle:"\"{n}\" Sayısının Bilimsel Sırları ve Ağ Yapıları", netStructure:"Ağ Yapısı",
+          equalProducts:"Eşit Değerli Çarpımlar", equalProductsSub:"Aynı sonucu veren diğer yollar:",
+          areaModelLabel:"Alan Modeli ({r} × {c})", areaModelSub:"Çarpmanın geometrik boyutunu gör.",
+          areaTooWide:"Bu çarpan çifti ({r} × {c}) alan modeline sığamayacak kadar geniş. Daha küçük bir çift seçersen noktalı modeli burada görebilirsin.",
+          buildingBlocks:"Yapı Taşları (Asal Çarpanlar – \"1\" dahil)", divisionRelation:"Bölme Bağıntısı (Ters İşlem)",
+          workshopSubtitle:"İşlemi zihninden çöz, sonucunu yaz ve kontrol et. Ardından aynı işlemi çözmenin farklı akıl yollarını keşfet!",
+          modeAdd:"Zihinden Toplama (2 Basamaklı)", modeMult:"Zihinden Çarpma (Pratik Katlar)",
+          targetOp:"Hedef İşlem", newProblem:"Yeni Problem Getir", writeResult:"Sonucu yaz:", check:"Kontrol Et", showMethods:"Çözüm Yollarını Göster",
+          correctTitle:"Doğru! 🎉", correctBody:"Harika iş — {op} = {ans}. Aşağıda bunu çözmenin farklı yollarını da inceleyebilirsin.",
+          wrongTitle:"Bu sefer olmadı, tekrar dene! 🌱", wrongBody:"Sorun değil — aşağıdaki yollardan birini takip edersen sonucu kolayca bulursun. Yeniden hesaplayıp girebilirsin.",
+          methodsHeader:"Bu işlem şu yollarla da çözülürdü:", methodsSub:"Hangisini sen de kullandın? Yeni bir tanesini deneyebilirsin.",
+          ariaSelectCol:"{n}. sütunu seç", ariaSelectRow:"{n}. satırı seç", ariaCell:"{r} çarpı {c} eşittir {v}", ariaResultInput:"İşlemin sonucunu yaz", langSelect:"Dil", countedLabel:"Sayılan", resetCount:"Sıfırla", countDone:"Hepsi sayıldı! 🎉", readBtn:"Oku", speakTmpl:"{r} çarpı {c} eşittir {p}", speechUnavailable:"Bu dil için cihazında sesli okuma yüklü değil.", rateLabel:"Hız", rateSlow:"Yavaş", rateNormal:"Normal", rateFast:"Hızlı"
+        },
+        methodNames:{ round:"Yuvarlama (Dengeleme)", split_add:"Parçalama (Onluk + Birlik)", jump:"Sayı Doğrusunda Atlama", transfer:"Sayı Aktarma", halve_double:"Yarılama & Katlama", split_mult:"Parçalama (Dağıtma)", step_factor:"Adım Adım Çarpan", quarter:"Çeyrek Yüz (×100 ÷ 4)", round_mult:"Yuvarlama (Dengeleme)" },
+        leads:{
+          think_round_extra:"{x} sayısını {r} gibi düşün ({d} fazla ekledik)", subtract_extra:"Fazladan eklediğimiz {d}'yi çıkar:",
+          add_tens:"Onlukları topla:", add_ones:"Birlikleri topla:", combine:"İkisini birleştir:",
+          jump_start:"{s}'den başla, {j} ekle:", jump_then:"Sonra {j} ekle:",
+          transfer_give:"{from} sayısından {k} al, {to} sayısına ver:", now_easy:"Artık çok kolay:",
+          double:"İki katına çıkar:", halve:"Yarıya böl:", new_problem:"Yeni, kolay işlem:",
+          split_as_sum:"{n} sayısını {x} + {y} olarak ayır:", add_them:"İkisini topla:",
+          think_as_product:"{n} sayısını {x} × {y} olarak düşün:", first:"Önce:", then:"Sonra:",
+          think_round:"{x} sayısını {r} gibi düşün:", subtract_extra_group:"Fazladan saydığımızı çıkar:",
+          quarter_of_100:"{n}, 100'ün dörtte biridir:", divide_by_4:"Dörde böl:"
+        }
+      },
+      en: {
+        ui: {
+          langName:"English",
+          appTitle:"Math Explorer",
+          appSubtitle:"Discover how numbers connect, solve in your head, and learn math the fun way!",
+          tabDiscovery:"Interactive Times Table", tabStrategy:"Mental Math Workshop",
+          consoleLabel:"Active Math Connection", row:"Row", col:"Column", result:"Result",
+          detailsShow:"Discover the secrets of {n}", detailsHide:"Hide the science details (simple view)",
+          legendEasy:"Easy (1, 2, 5, 10)", legendMedium:"Medium (3, 4)", legendAdvanced:"Hard (6, 7, 8, 9)", legendSquare:"Square numbers line", legendLocked:"Locked cell",
+          detailsTitle:"The secrets & networks of {n}", netStructure:"Network",
+          equalProducts:"Equal Products", equalProductsSub:"Other ways to get the same result:",
+          areaModelLabel:"Area Model ({r} × {c})", areaModelSub:"See the geometric size of multiplication.",
+          areaTooWide:"This factor pair ({r} × {c}) is too wide for the area model. Pick a smaller pair to see the dotted model here.",
+          buildingBlocks:"Building Blocks (Prime factors – incl. \"1\")", divisionRelation:"Division Link (Inverse operation)",
+          workshopSubtitle:"Solve in your head, type your answer, and check it. Then explore different ways to solve the same problem!",
+          modeAdd:"Mental Addition (2-digit)", modeMult:"Mental Multiplication (handy tricks)",
+          targetOp:"Target Problem", newProblem:"Get a new problem", writeResult:"Type your answer:", check:"Check", showMethods:"Show solution paths",
+          correctTitle:"Correct! 🎉", correctBody:"Great job — {op} = {ans}. Explore the different ways to solve it below.",
+          wrongTitle:"Not this time, try again! 🌱", wrongBody:"No worries — follow one of the paths below and you'll get it. Recalculate and enter your answer.",
+          methodsHeader:"This problem could also be solved like this:", methodsSub:"Which one did you use? Try a new one!",
+          ariaSelectCol:"Select column {n}", ariaSelectRow:"Select row {n}", ariaCell:"{r} times {c} equals {v}", ariaResultInput:"Type the result of the problem", langSelect:"Language", countedLabel:"Counted", resetCount:"Reset", countDone:"All counted! 🎉", readBtn:"Read", speakTmpl:"{r} times {c} equals {p}", speechUnavailable:"Text-to-speech for this language isn\u2019t installed on your device.", rateLabel:"Speed", rateSlow:"Slow", rateNormal:"Normal", rateFast:"Fast"
+        },
+        methodNames:{ round:"Rounding (Balancing)", split_add:"Splitting (Tens + Ones)", jump:"Jumping on the Number Line", transfer:"Number Transfer", halve_double:"Halving & Doubling", split_mult:"Splitting (Distributing)", step_factor:"Factor by Factor", quarter:"Quarter of 100 (×100 ÷ 4)", round_mult:"Rounding (Balancing)" },
+        leads:{
+          think_round_extra:"Think of {x} as {r} (we added {d} extra)", subtract_extra:"Subtract the extra {d}:",
+          add_tens:"Add the tens:", add_ones:"Add the ones:", combine:"Combine them:",
+          jump_start:"Start at {s}, add {j}:", jump_then:"Then add {j}:",
+          transfer_give:"Take {k} from {from} and give it to {to}:", now_easy:"Now it's easy:",
+          double:"Double:", halve:"Halve:", new_problem:"New, easier problem:",
+          split_as_sum:"Split {n} into {x} + {y}:", add_them:"Add them up:",
+          think_as_product:"Think of {n} as {x} × {y}:", first:"First:", then:"Then:",
+          think_round:"Think of {x} as {r}:", subtract_extra_group:"Subtract the extra group:",
+          quarter_of_100:"{n} is a quarter of 100:", divide_by_4:"Divide by 4:"
+        }
+      },
+      es: {
+        ui: {
+          langName:"Español",
+          appTitle:"Explorador Matemático",
+          appSubtitle:"¡Descubre cómo se conectan los números, resuelve mentalmente y aprende matemáticas de forma divertida!",
+          tabDiscovery:"Tabla de Multiplicar Interactiva", tabStrategy:"Taller de Cálculo Mental",
+          consoleLabel:"Conexión Matemática Activa", row:"Fila", col:"Columna", result:"Resultado",
+          detailsShow:"Descubre los secretos del {n}", detailsHide:"Ocultar los detalles (vista simple)",
+          legendEasy:"Fácil (1, 2, 5, 10)", legendMedium:"Medio (3, 4)", legendAdvanced:"Difícil (6, 7, 8, 9)", legendSquare:"Línea de cuadrados", legendLocked:"Casilla fijada",
+          detailsTitle:"Los secretos y las redes del {n}", netStructure:"Red",
+          equalProducts:"Productos Iguales", equalProductsSub:"Otras formas de obtener el mismo resultado:",
+          areaModelLabel:"Modelo de Área ({r} × {c})", areaModelSub:"Mira el tamaño geométrico de la multiplicación.",
+          areaTooWide:"Este par de factores ({r} × {c}) es demasiado ancho para el modelo de área. Elige un par más pequeño para ver el modelo de puntos.",
+          buildingBlocks:"Bloques (Factores primos – incl. \"1\")", divisionRelation:"Relación con la División (inversa)",
+          workshopSubtitle:"Resuelve mentalmente, escribe tu respuesta y compruébala. ¡Luego explora distintas formas de resolverlo!",
+          modeAdd:"Suma Mental (2 cifras)", modeMult:"Multiplicación Mental (trucos prácticos)",
+          targetOp:"Problema", newProblem:"Nuevo problema", writeResult:"Escribe tu respuesta:", check:"Comprobar", showMethods:"Mostrar las soluciones",
+          correctTitle:"¡Correcto! 🎉", correctBody:"¡Muy bien! — {op} = {ans}. Explora abajo las distintas formas de resolverlo.",
+          wrongTitle:"Esta vez no, ¡inténtalo otra vez! 🌱", wrongBody:"Sin problema: sigue uno de los caminos de abajo y lo lograrás. Vuelve a calcular y escribe tu respuesta.",
+          methodsHeader:"Este problema también se podría resolver así:", methodsSub:"¿Cuál usaste tú? ¡Prueba uno nuevo!",
+          ariaSelectCol:"Seleccionar columna {n}", ariaSelectRow:"Seleccionar fila {n}", ariaCell:"{r} por {c} es igual a {v}", ariaResultInput:"Escribe el resultado del problema", langSelect:"Idioma", countedLabel:"Contados", resetCount:"Reiniciar", countDone:"¡Todos contados! 🎉", readBtn:"Leer", speakTmpl:"{r} por {c} es igual a {p}", speechUnavailable:"La lectura en voz alta para este idioma no está instalada en tu dispositivo.", rateLabel:"Velocidad", rateSlow:"Lento", rateNormal:"Normal", rateFast:"Rápido"
+        },
+        methodNames:{ round:"Redondeo (Compensación)", split_add:"Descomposición (Decenas + Unidades)", jump:"Saltos en la Recta Numérica", transfer:"Transferencia de Números", halve_double:"Mitad y Doble", split_mult:"Descomposición (Distributiva)", step_factor:"Factor por Factor", quarter:"Cuarto de 100 (×100 ÷ 4)", round_mult:"Redondeo (Compensación)" },
+        leads:{
+          think_round_extra:"Piensa en {x} como {r} (añadimos {d} de más)", subtract_extra:"Resta los {d} de más:",
+          add_tens:"Suma las decenas:", add_ones:"Suma las unidades:", combine:"Combínalas:",
+          jump_start:"Empieza en {s}, suma {j}:", jump_then:"Luego suma {j}:",
+          transfer_give:"Quita {k} a {from} y dáselo a {to}:", now_easy:"Ahora es muy fácil:",
+          double:"Duplica:", halve:"Reduce a la mitad:", new_problem:"Nuevo problema, más fácil:",
+          split_as_sum:"Descompón {n} en {x} + {y}:", add_them:"Súmalos:",
+          think_as_product:"Piensa en {n} como {x} × {y}:", first:"Primero:", then:"Luego:",
+          think_round:"Piensa en {x} como {r}:", subtract_extra_group:"Resta el grupo de más:",
+          quarter_of_100:"{n} es la cuarta parte de 100:", divide_by_4:"Divide entre 4:"
+        }
+      },
+      de: {
+        ui: {
+          langName:"Deutsch",
+          appTitle:"Mathe-Entdecker",
+          appSubtitle:"Entdecke, wie Zahlen zusammenhängen, rechne im Kopf und lerne Mathe mit Spaß!",
+          tabDiscovery:"Interaktives Einmaleins", tabStrategy:"Kopfrechen-Werkstatt",
+          consoleLabel:"Aktive Mathe-Verbindung", row:"Zeile", col:"Spalte", result:"Ergebnis",
+          detailsShow:"Entdecke die Geheimnisse der {n}", detailsHide:"Details ausblenden (einfache Ansicht)",
+          legendEasy:"Leicht (1, 2, 5, 10)", legendMedium:"Mittel (3, 4)", legendAdvanced:"Schwer (6, 7, 8, 9)", legendSquare:"Reihe der Quadratzahlen", legendLocked:"Fixiertes Feld",
+          detailsTitle:"Die Geheimnisse und Netze der {n}", netStructure:"Netz",
+          equalProducts:"Gleiche Produkte", equalProductsSub:"Andere Wege zum gleichen Ergebnis:",
+          areaModelLabel:"Flächenmodell ({r} × {c})", areaModelSub:"Sieh die geometrische Größe der Multiplikation.",
+          areaTooWide:"Dieses Faktorenpaar ({r} × {c}) ist zu breit für das Flächenmodell. Wähle ein kleineres Paar, um das Punktemodell zu sehen.",
+          buildingBlocks:"Bausteine (Primfaktoren – inkl. \"1\")", divisionRelation:"Verbindung zur Division (Umkehrung)",
+          workshopSubtitle:"Rechne im Kopf, schreibe dein Ergebnis und überprüfe es. Entdecke dann verschiedene Lösungswege!",
+          modeAdd:"Kopf-Addition (2-stellig)", modeMult:"Kopf-Multiplikation (praktische Tricks)",
+          targetOp:"Aufgabe", newProblem:"Neue Aufgabe", writeResult:"Schreibe dein Ergebnis:", check:"Prüfen", showMethods:"Lösungswege zeigen",
+          correctTitle:"Richtig! 🎉", correctBody:"Super gemacht — {op} = {ans}. Entdecke unten die verschiedenen Lösungswege.",
+          wrongTitle:"Diesmal nicht, versuch es nochmal! 🌱", wrongBody:"Kein Problem — folge einem der Wege unten, dann klappt es. Rechne neu und gib dein Ergebnis ein.",
+          methodsHeader:"Diese Aufgabe ließe sich auch so lösen:", methodsSub:"Welchen hast du benutzt? Probier einen neuen!",
+          ariaSelectCol:"Spalte {n} auswählen", ariaSelectRow:"Zeile {n} auswählen", ariaCell:"{r} mal {c} ist gleich {v}", ariaResultInput:"Gib das Ergebnis der Aufgabe ein", langSelect:"Sprache", countedLabel:"Gezählt", resetCount:"Zurücksetzen", countDone:"Alle gezählt! 🎉", readBtn:"Vorlesen", speakTmpl:"{r} mal {c} ist gleich {p}", speechUnavailable:"Vorlesen für diese Sprache ist auf deinem Gerät nicht installiert.", rateLabel:"Tempo", rateSlow:"Langsam", rateNormal:"Normal", rateFast:"Schnell"
+        },
+        methodNames:{ round:"Runden (Ausgleichen)", split_add:"Zerlegen (Zehner + Einer)", jump:"Springen am Zahlenstrahl", transfer:"Zahlen übertragen", halve_double:"Halbieren & Verdoppeln", split_mult:"Zerlegen (Verteilen)", step_factor:"Faktor für Faktor", quarter:"Viertel von 100 (×100 ÷ 4)", round_mult:"Runden (Ausgleichen)" },
+        leads:{
+          think_round_extra:"Stell dir {x} als {r} vor (wir haben {d} zu viel addiert)", subtract_extra:"Ziehe die {d} zu viel ab:",
+          add_tens:"Addiere die Zehner:", add_ones:"Addiere die Einer:", combine:"Füge sie zusammen:",
+          jump_start:"Starte bei {s}, addiere {j}:", jump_then:"Dann addiere {j}:",
+          transfer_give:"Nimm {k} von {from} und gib es {to}:", now_easy:"Jetzt ist es ganz leicht:",
+          double:"Verdopple:", halve:"Halbiere:", new_problem:"Neue, leichtere Aufgabe:",
+          split_as_sum:"Zerlege {n} in {x} + {y}:", add_them:"Addiere sie:",
+          think_as_product:"Denk dir {n} als {x} × {y}:", first:"Zuerst:", then:"Dann:",
+          think_round:"Stell dir {x} als {r} vor:", subtract_extra_group:"Ziehe die zu viel gezählte Gruppe ab:",
+          quarter_of_100:"{n} ist ein Viertel von 100:", divide_by_4:"Teile durch 4:"
+        }
+      },
+      ru: {
+        ui: {
+          langName:"Русский",
+          appTitle:"Математический Исследователь",
+          appSubtitle:"Узнай, как связаны числа, считай в уме и учи математику с удовольствием!",
+          tabDiscovery:"Интерактивная таблица умножения", tabStrategy:"Мастерская устного счёта",
+          consoleLabel:"Активная математическая связь", row:"Строка", col:"Столбец", result:"Результат",
+          detailsShow:"Открой секреты числа {n}", detailsHide:"Скрыть подробности (простой вид)",
+          legendEasy:"Лёгкие (1, 2, 5, 10)", legendMedium:"Средние (3, 4)", legendAdvanced:"Сложные (6, 7, 8, 9)", legendSquare:"Линия квадратов", legendLocked:"Выбранная клетка",
+          detailsTitle:"Секреты и связи числа {n}", netStructure:"Связи",
+          equalProducts:"Равные произведения", equalProductsSub:"Другие способы получить тот же результат:",
+          areaModelLabel:"Модель площади ({r} × {c})", areaModelSub:"Посмотри на геометрический размер умножения.",
+          areaTooWide:"Эта пара множителей ({r} × {c}) слишком велика для модели площади. Выбери пару поменьше, чтобы увидеть точечную модель.",
+          buildingBlocks:"Кирпичики (простые множители – вкл. «1»)", divisionRelation:"Связь с делением (обратное действие)",
+          workshopSubtitle:"Реши в уме, впиши ответ и проверь его. Затем изучи разные способы решить тот же пример!",
+          modeAdd:"Сложение в уме (двузначные)", modeMult:"Умножение в уме (удобные приёмы)",
+          targetOp:"Пример", newProblem:"Новый пример", writeResult:"Впиши ответ:", check:"Проверить", showMethods:"Показать способы решения",
+          correctTitle:"Верно! 🎉", correctBody:"Отлично — {op} = {ans}. Ниже посмотри разные способы решения.",
+          wrongTitle:"В этот раз не вышло, попробуй ещё! 🌱", wrongBody:"Ничего страшного — пройди один из способов ниже, и всё получится. Посчитай заново и впиши ответ.",
+          methodsHeader:"Этот пример можно решить и так:", methodsSub:"Каким способом решал ты? Попробуй новый!",
+          ariaSelectCol:"Выбрать столбец {n}", ariaSelectRow:"Выбрать строку {n}", ariaCell:"{r} умножить на {c} равно {v}", ariaResultInput:"Впиши результат примера", langSelect:"Язык", countedLabel:"Сосчитано", resetCount:"Сброс", countDone:"Все сосчитаны! 🎉", readBtn:"Озвучить", speakTmpl:"{r} умножить на {c} равно {p}", speechUnavailable:"Озвучивание для этого языка не установлено на вашем устройстве.", rateLabel:"Скорость", rateSlow:"Медленно", rateNormal:"Обычно", rateFast:"Быстро"
+        },
+        methodNames:{ round:"Округление (уравновешивание)", split_add:"Разбиение (десятки + единицы)", jump:"Прыжки по числовой прямой", transfer:"Перенос числа", halve_double:"Половина и удвоение", split_mult:"Разбиение (распределение)", step_factor:"Множитель за множителем", quarter:"Четверть сотни (×100 ÷ 4)", round_mult:"Округление (уравновешивание)" },
+        leads:{
+          think_round_extra:"Представь {x} как {r} (мы добавили {d} лишних)", subtract_extra:"Вычти лишние {d}:",
+          add_tens:"Сложи десятки:", add_ones:"Сложи единицы:", combine:"Объедини их:",
+          jump_start:"Начни с {s}, прибавь {j}:", jump_then:"Затем прибавь {j}:",
+          transfer_give:"Возьми {k} у {from} и отдай {to}:", now_easy:"Теперь совсем легко:",
+          double:"Удвой:", halve:"Раздели пополам:", new_problem:"Новый, лёгкий пример:",
+          split_as_sum:"Разбей {n} на {x} + {y}:", add_them:"Сложи их:",
+          think_as_product:"Представь {n} как {x} × {y}:", first:"Сначала:", then:"Затем:",
+          think_round:"Представь {x} как {r}:", subtract_extra_group:"Вычти лишнюю группу:",
+          quarter_of_100:"{n} — это четверть сотни:", divide_by_4:"Раздели на 4:"
+        }
+      },
+      ja: {
+        ui: {
+          langName:"日本語",
+          appTitle:"算数たんけんたい",
+          appSubtitle:"数のつながりを見つけて、暗算でといて、算数を楽しく学ぼう！",
+          tabDiscovery:"インタラクティブ九九表", tabStrategy:"暗算ワークショップ",
+          consoleLabel:"アクティブな計算", row:"行", col:"列", result:"答え",
+          detailsShow:"{n} のひみつを見てみよう", detailsHide:"くわしい説明をかくす（シンプル表示）",
+          legendEasy:"かんたん (1, 2, 5, 10)", legendMedium:"ふつう (3, 4)", legendAdvanced:"むずかしい (6, 7, 8, 9)", legendSquare:"平方数のライン", legendLocked:"選んだマス",
+          detailsTitle:"{n} のひみつとつながり", netStructure:"つながり",
+          equalProducts:"同じ答えになるかけ算", equalProductsSub:"同じ答えになる別の組み合わせ：",
+          areaModelLabel:"面積モデル ({r} × {c})", areaModelSub:"かけ算の大きさを目で見てみよう。",
+          areaTooWide:"この組み合わせ ({r} × {c}) は面積モデルには大きすぎます。小さい組み合わせを選ぶと点のモデルが見られます。",
+          buildingBlocks:"組み立てブロック（素因数 –「1」をふくむ）", divisionRelation:"わり算とのつながり（逆の計算）",
+          workshopSubtitle:"暗算でといて、答えを入力してたしかめよう。そのあと、同じ問題のいろいろなとき方を見てみよう！",
+          modeAdd:"暗算の足し算（2けた）", modeMult:"暗算のかけ算（べんりなコツ）",
+          targetOp:"もんだい", newProblem:"新しいもんだい", writeResult:"答えを入力：", check:"たしかめる", showMethods:"とき方を見る",
+          correctTitle:"せいかい！🎉", correctBody:"よくできました — {op} = {ans}。下でいろいろなとき方を見てみよう。",
+          wrongTitle:"おしい！もう一度ためそう 🌱", wrongBody:"だいじょうぶ — 下のとき方を1つたどればとけるよ。もう一度計算して答えを入力してね。",
+          methodsHeader:"このもんだいは、こんなとき方もできます：", methodsSub:"どれを使った？新しいのもためしてみよう！",
+          ariaSelectCol:"{n} 列目を選ぶ", ariaSelectRow:"{n} 行目を選ぶ", ariaCell:"{r} かける {c} は {v}", ariaResultInput:"もんだいの答えを入力", langSelect:"言語", countedLabel:"数えた数", resetCount:"リセット", countDone:"ぜんぶ数えた！🎉", readBtn:"読み上げ", speakTmpl:"{r} かける {c} は {p}", speechUnavailable:"この言語の読み上げ音声が端末にインストールされていません。", rateLabel:"速さ", rateSlow:"ゆっくり", rateNormal:"ふつう", rateFast:"はやい"
+        },
+        methodNames:{ round:"きりのいい数にする（調整）", split_add:"分ける（十の位＋一の位）", jump:"数直線でジャンプ", transfer:"数のやりとり", halve_double:"半分と2倍", split_mult:"分ける（分配）", step_factor:"かける数を分けて", quarter:"100の4分の1 (×100 ÷ 4)", round_mult:"きりのいい数にする（調整）" },
+        leads:{
+          think_round_extra:"{x} を {r} と考える（{d} 多くたした）", subtract_extra:"多くたした {d} をひく：",
+          add_tens:"十の位をたす：", add_ones:"一の位をたす：", combine:"2つを合わせる：",
+          jump_start:"{s} からはじめて {j} たす：", jump_then:"つぎに {j} たす：",
+          transfer_give:"{from} から {k} を {to} にわたす：", now_easy:"もうかんたん：",
+          double:"2倍にする：", halve:"半分にする：", new_problem:"新しいかんたんな計算：",
+          split_as_sum:"{n} を {x} + {y} に分ける：", add_them:"たし合わせる：",
+          think_as_product:"{n} を {x} × {y} と考える：", first:"まず：", then:"つぎに：",
+          think_round:"{x} を {r} と考える：", subtract_extra_group:"多く数えた分をひく：",
+          quarter_of_100:"{n} は 100 の4分の1：", divide_by_4:"4でわる："
+        }
+      },
+      ar: {
+        ui: {
+          langName:"العربية",
+          appTitle:"مستكشف الرياضيات",
+          appSubtitle:"اكتشف كيف ترتبط الأعداد، واحسب ذهنياً، وتعلّم الرياضيات بمتعة!",
+          tabDiscovery:"جدول الضرب التفاعلي", tabStrategy:"ورشة الحساب الذهني",
+          consoleLabel:"الرابط الرياضي النشط", row:"الصف", col:"العمود", result:"الناتج",
+          detailsShow:"اكتشف أسرار العدد {n}", detailsHide:"إخفاء التفاصيل (عرض مبسّط)",
+          legendEasy:"سهل (1، 2، 5، 10)", legendMedium:"متوسط (3، 4)", legendAdvanced:"صعب (6، 7، 8، 9)", legendSquare:"خط الأعداد المربّعة", legendLocked:"الخلية المثبّتة",
+          detailsTitle:"أسرار وروابط العدد {n}", netStructure:"الروابط",
+          equalProducts:"حواصل ضرب متساوية", equalProductsSub:"طرق أخرى للوصول إلى الناتج نفسه:",
+          areaModelLabel:"نموذج المساحة ({r} × {c})", areaModelSub:"شاهد الحجم الهندسي للضرب.",
+          areaTooWide:"زوج العوامل هذا ({r} × {c}) أكبر من أن يتّسع في نموذج المساحة. اختر زوجاً أصغر لرؤية نموذج النقاط هنا.",
+          buildingBlocks:"اللبنات (العوامل الأولية – وتشمل «1»)", divisionRelation:"العلاقة مع القسمة (العملية العكسية)",
+          workshopSubtitle:"احسب ذهنياً، اكتب إجابتك وتحقّق منها. ثم اكتشف طرقاً مختلفة لحل المسألة نفسها!",
+          modeAdd:"الجمع الذهني (رقمان)", modeMult:"الضرب الذهني (حيل عملية)",
+          targetOp:"المسألة", newProblem:"مسألة جديدة", writeResult:"اكتب إجابتك:", check:"تحقّق", showMethods:"عرض طرق الحل",
+          correctTitle:"صحيح! 🎉", correctBody:"أحسنت — {op} = {ans}. اكتشف في الأسفل طرقاً مختلفة للحل.",
+          wrongTitle:"ليس هذه المرة، حاول مرة أخرى! 🌱", wrongBody:"لا بأس — اتبع إحدى الطرق في الأسفل وستصل إلى الناتج. أعد الحساب واكتب إجابتك.",
+          methodsHeader:"يمكن حل هذه المسألة أيضاً هكذا:", methodsSub:"أيّها استخدمت؟ جرّب طريقة جديدة!",
+          ariaSelectCol:"اختر العمود {n}", ariaSelectRow:"اختر الصف {n}", ariaCell:"{r} في {c} يساوي {v}", ariaResultInput:"اكتب ناتج المسألة", langSelect:"اللغة", countedLabel:"المعدود", resetCount:"إعادة", countDone:"تم عدّها كلها! 🎉", readBtn:"اقرأ", speakTmpl:"{r} في {c} يساوي {p}", speechUnavailable:"ميزة القراءة الصوتية لهذه اللغة غير مثبّتة على جهازك.", rateLabel:"السرعة", rateSlow:"بطيء", rateNormal:"عادي", rateFast:"سريع"
+        },
+        methodNames:{ round:"التقريب (الموازنة)", split_add:"التفكيك (عشرات + آحاد)", jump:"القفز على خط الأعداد", transfer:"نقل الأعداد", halve_double:"التنصيف والمضاعفة", split_mult:"التفكيك (التوزيع)", step_factor:"عامل تلو الآخر", quarter:"ربع المئة (×100 ÷ 4)", round_mult:"التقريب (الموازنة)" },
+        leads:{
+          think_round_extra:"تخيّل {x} كأنه {r} (أضفنا {d} زيادة)", subtract_extra:"اطرح الزيادة {d}:",
+          add_tens:"اجمع العشرات:", add_ones:"اجمع الآحاد:", combine:"اجمعهما معاً:",
+          jump_start:"ابدأ من {s} وأضف {j}:", jump_then:"ثم أضف {j}:",
+          transfer_give:"خذ {k} من {from} وأعطها لـ {to}:", now_easy:"الآن أصبح سهلاً:",
+          double:"ضاعِف:", halve:"خذ النصف:", new_problem:"مسألة جديدة وأسهل:",
+          split_as_sum:"فكّك {n} إلى {x} + {y}:", add_them:"اجمعها:",
+          think_as_product:"تخيّل {n} كأنه {x} × {y}:", first:"أولاً:", then:"ثم:",
+          think_round:"تخيّل {x} كأنه {r}:", subtract_extra_group:"اطرح المجموعة الزائدة:",
+          quarter_of_100:"{n} هو ربع المئة:", divide_by_4:"اقسم على 4:"
+        }
+      }
+    };
+
+    /* ===================== PROBLEM VERİSİ (dilden bağımsız) =====================
+       Adımların sözel kısmı 'lead' anahtarıyla çevrilir; sayısal ifade 'expr'
+       her dilde aynıdır. Böylece aritmetik tek yerde tanımlı, hatasız kalır. */
+    const PROBLEMS = {
+      add: [
+        { id:'a1', text:'48 + 35', answer:83, methods:[
+          { nameKey:'round', icon:'🎯', steps:[ {lead:'think_round_extra', p:{x:48,r:50,d:2}}, {lead:'', expr:'50 + 35 = 85'}, {lead:'subtract_extra', p:{d:2}, expr:'85 − 2 = 83'} ]},
+          { nameKey:'split_add', icon:'🧩', steps:[ {lead:'add_tens', expr:'40 + 30 = 70'}, {lead:'add_ones', expr:'8 + 5 = 13'}, {lead:'combine', expr:'70 + 13 = 83'} ]},
+          { nameKey:'jump', icon:'🦘', steps:[ {lead:'jump_start', p:{s:48,j:30}, expr:'48 + 30 = 78'}, {lead:'jump_then', p:{j:5}, expr:'78 + 5 = 83'} ]}
+        ]},
+        { id:'a2', text:'27 + 59', answer:86, methods:[
+          { nameKey:'round', icon:'🎯', steps:[ {lead:'think_round_extra', p:{x:59,r:60,d:1}}, {lead:'', expr:'27 + 60 = 87'}, {lead:'subtract_extra', p:{d:1}, expr:'87 − 1 = 86'} ]},
+          { nameKey:'split_add', icon:'🧩', steps:[ {lead:'add_tens', expr:'20 + 50 = 70'}, {lead:'add_ones', expr:'7 + 9 = 16'}, {lead:'combine', expr:'70 + 16 = 86'} ]},
+          { nameKey:'transfer', icon:'🔄', steps:[ {lead:'transfer_give', p:{k:1,from:27,to:59}, expr:'26 + 60'}, {lead:'now_easy', expr:'26 + 60 = 86'} ]}
+        ]},
+        { id:'a3', text:'64 + 18', answer:82, methods:[
+          { nameKey:'round', icon:'🎯', steps:[ {lead:'think_round_extra', p:{x:18,r:20,d:2}}, {lead:'', expr:'64 + 20 = 84'}, {lead:'subtract_extra', p:{d:2}, expr:'84 − 2 = 82'} ]},
+          { nameKey:'split_add', icon:'🧩', steps:[ {lead:'add_tens', expr:'60 + 10 = 70'}, {lead:'add_ones', expr:'4 + 8 = 12'}, {lead:'combine', expr:'70 + 12 = 82'} ]},
+          { nameKey:'jump', icon:'🦘', steps:[ {lead:'jump_start', p:{s:64,j:10}, expr:'64 + 10 = 74'}, {lead:'jump_then', p:{j:8}, expr:'74 + 8 = 82'} ]}
+        ]},
+        { id:'a4', text:'39 + 45', answer:84, methods:[
+          { nameKey:'round', icon:'🎯', steps:[ {lead:'think_round_extra', p:{x:39,r:40,d:1}}, {lead:'', expr:'40 + 45 = 85'}, {lead:'subtract_extra', p:{d:1}, expr:'85 − 1 = 84'} ]},
+          { nameKey:'split_add', icon:'🧩', steps:[ {lead:'add_tens', expr:'30 + 40 = 70'}, {lead:'add_ones', expr:'9 + 5 = 14'}, {lead:'combine', expr:'70 + 14 = 84'} ]},
+          { nameKey:'transfer', icon:'🔄', steps:[ {lead:'transfer_give', p:{k:1,from:45,to:39}, expr:'40 + 44'}, {lead:'now_easy', expr:'40 + 44 = 84'} ]}
+        ]}
+      ],
+      mult: [
+        { id:'m1', text:'15 × 6', answer:90, methods:[
+          { nameKey:'halve_double', icon:'🌗', steps:[ {lead:'double', expr:'15 × 2 = 30'}, {lead:'halve', expr:'6 ÷ 2 = 3'}, {lead:'new_problem', expr:'30 × 3 = 90'} ]},
+          { nameKey:'split_mult', icon:'🧩', steps:[ {lead:'split_as_sum', p:{n:15,x:10,y:5}}, {lead:'', expr:'10 × 6 = 60 • 5 × 6 = 30'}, {lead:'add_them', expr:'60 + 30 = 90'} ]},
+          { nameKey:'step_factor', icon:'🪜', steps:[ {lead:'think_as_product', p:{n:6,x:3,y:2}}, {lead:'first', expr:'15 × 3 = 45'}, {lead:'then', expr:'45 × 2 = 90'} ]}
+        ]},
+        { id:'m2', text:'12 × 14', answer:168, methods:[
+          { nameKey:'split_mult', icon:'🧩', steps:[ {lead:'split_as_sum', p:{n:14,x:10,y:4}}, {lead:'', expr:'12 × 10 = 120 • 12 × 4 = 48'}, {lead:'add_them', expr:'120 + 48 = 168'} ]},
+          { nameKey:'halve_double', icon:'🌗', steps:[ {lead:'halve', expr:'12 ÷ 2 = 6'}, {lead:'double', expr:'14 × 2 = 28'}, {lead:'new_problem', expr:'6 × 28 = 168'} ]},
+          { nameKey:'step_factor', icon:'🪜', steps:[ {lead:'think_as_product', p:{n:12,x:6,y:2}}, {lead:'first', expr:'14 × 6 = 84'}, {lead:'then', expr:'84 × 2 = 168'} ]}
+        ]},
+        { id:'m3', text:'19 × 8', answer:152, methods:[
+          { nameKey:'round_mult', icon:'🎯', steps:[ {lead:'think_round', p:{x:19,r:20}}, {lead:'', expr:'20 × 8 = 160'}, {lead:'subtract_extra_group', expr:'160 − 8 = 152'} ]},
+          { nameKey:'split_mult', icon:'🧩', steps:[ {lead:'split_as_sum', p:{n:19,x:10,y:9}}, {lead:'', expr:'10 × 8 = 80 • 9 × 8 = 72'}, {lead:'add_them', expr:'80 + 72 = 152'} ]},
+          { nameKey:'halve_double', icon:'🌗', steps:[ {lead:'halve', expr:'8 ÷ 2 = 4'}, {lead:'double', expr:'19 × 2 = 38'}, {lead:'new_problem', expr:'4 × 38 = 152'} ]}
+        ]},
+        { id:'m4', text:'25 × 12', answer:300, methods:[
+          { nameKey:'quarter', icon:'💯', steps:[ {lead:'quarter_of_100', p:{n:25}}, {lead:'', expr:'12 × 100 = 1200'}, {lead:'divide_by_4', expr:'1200 ÷ 4 = 300'} ]},
+          { nameKey:'split_mult', icon:'🧩', steps:[ {lead:'split_as_sum', p:{n:12,x:10,y:2}}, {lead:'', expr:'25 × 10 = 250 • 25 × 2 = 50'}, {lead:'add_them', expr:'250 + 50 = 300'} ]},
+          { nameKey:'halve_double', icon:'🌗', steps:[ {lead:'double', expr:'25 × 2 = 50'}, {lead:'halve', expr:'12 ÷ 2 = 6'}, {lead:'new_problem', expr:'50 × 6 = 300'} ]}
+        ]},
+        { id:'m5', text:'14 × 15', answer:210, methods:[
+          { nameKey:'halve_double', icon:'🌗', steps:[ {lead:'halve', expr:'14 ÷ 2 = 7'}, {lead:'double', expr:'15 × 2 = 30'}, {lead:'new_problem', expr:'7 × 30 = 210'} ]},
+          { nameKey:'split_mult', icon:'🧩', steps:[ {lead:'split_as_sum', p:{n:15,x:10,y:5}}, {lead:'', expr:'14 × 10 = 140 • 14 × 5 = 70'}, {lead:'add_them', expr:'140 + 70 = 210'} ]},
+          { nameKey:'step_factor', icon:'🪜', steps:[ {lead:'think_as_product', p:{n:14,x:7,y:2}}, {lead:'first', expr:'15 × 7 = 105'}, {lead:'then', expr:'105 × 2 = 210'} ]}
+        ]}
+      ]
+    };
+
+    /* ===================== ÇEVİRİ YARDIMCILARI ===================== */
+    function t(key, vars) {
+      const dict = (I18N[state.lang] || I18N.tr).ui;
+      let s = (key in dict) ? dict[key] : (I18N.tr.ui[key] ?? key);
+      if (vars) for (const k in vars) s = s.split('{'+k+'}').join(vars[k]);
+      return s;
+    }
+    function leadText(step) {
+      if (!step.lead) return '';
+      const leads = (I18N[state.lang] || I18N.tr).leads;
+      let s = leads[step.lead] ?? (I18N.tr.leads[step.lead] ?? '');
+      if (step.p) for (const k in step.p) s = s.split('{'+k+'}').join(step.p[k]);
+      return s;
+    }
+    function getMethods(problem) {
+      const mn = (I18N[state.lang] || I18N.tr).methodNames;
+      return problem.methods.map(m => ({
+        name: mn[m.nameKey] ?? I18N.tr.methodNames[m.nameKey],
+        icon: m.icon, steps: m.steps
+      }));
+    }
+    function getProblem(mode) {
+      const list = PROBLEMS[mode];
+      return list[rand(0, list.length - 1)];
+    }
+
+    /* ===================== MATEMATİK YARDIMCILARI ===================== */
+    const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+    function getIcon(name, className = "w-5 h-5") {
+      const icons = {
+        sparkles: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`,
+        compass: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>`,
+        brain: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-3.12 3 3 0 0 1 0-3.88 2.5 2.5 0 0 1 0-3.12A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-3.12 3 3 0 0 0 0-3.88 2.5 2.5 0 0 0 0-3.12A2.5 2.5 0 0 0 14.5 2Z"/></svg>`,
+        grid3x3: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>`,
+        info: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+        lightbulb: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .6 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>`,
+        refresh: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M16 3h5v5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 21H3v-5"/></svg>`,
+        check: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+        gitBranch: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>`,
+        globe: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+        volume2: `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`
+      };
+      return icons[name] || '';
+    }
+
+    function getFactorPairs(num) {
+      const pairs = [];
+      for (let i = 1; i <= Math.sqrt(num); i++) {
+        if (num % i === 0) {
+          pairs.push([i, num / i]);
+          if (i !== num / i && num / i <= 100) pairs.push([num / i, i]);
+        }
+      }
+      return pairs.sort((a, b) => a[0] - b[0]);
+    }
+    function getPrimeFactors(num) {
+      let n = num; const factors = []; let d = 2;
+      while (n >= 2) { if (n % d === 0) { factors.push(d); n = n / d; } else d++; }
+      return factors;
+    }
+    function getDivisionExamples(num) {
+      return [ {dividend:num*2,divisor:2},{dividend:num*3,divisor:3},{dividend:num*4,divisor:4},{dividend:num*5,divisor:5} ].filter(d => d.dividend <= 200);
+    }
+
+    /* ===================== SES ===================== */
+    let synth;
+    function playTone(freq, type = "sine", duration = "8n") {
+      try {
+        if (typeof Tone === "undefined") return;
+        if (!synth) { synth = new Tone.Synth({ oscillator:{type}, envelope:{attack:.05,decay:.1,sustain:.3,release:.2} }).toDestination(); synth.volume.value = -12; }
+        Tone.start(); synth.triggerAttackRelease(freq, duration);
+      } catch (e) {}
+    }
+    function playRewardSound() {
+      if (typeof Tone === "undefined") return;
+      setTimeout(()=>playTone("C5","triangle","16n"),0);
+      setTimeout(()=>playTone("E5","triangle","16n"),100);
+      setTimeout(()=>playTone("G5","triangle","16n"),200);
+      setTimeout(()=>playTone("C6","triangle","8n"),300);
+    }
+    function playSelectSound(){ if (typeof Tone !== "undefined") playTone("E4","sine","32n"); }
+
+    /* ===================== SESLİ DİKTE (Web Speech API) ===================== */
+    const SPEECH_LANG = { tr:'tr-TR', en:'en-US', es:'es-ES', de:'de-DE', ru:'ru-RU', ja:'ja-JP', ar:'ar-SA' };
+
+    /* Sayıyı seçili dilde kelimeye çevirir (0–100). Ses motorunun rakamı
+       yanlış/ekli okumasını engeller: "25" yerine "yirmi beş" söyletilir. */
+    const NW = {
+      tr: n => { if(n===100) return 'yüz'; const o=['sıfır','bir','iki','üç','dört','beş','altı','yedi','sekiz','dokuz'],t=['','on','yirmi','otuz','kırk','elli','altmış','yetmiş','seksen','doksan']; if(n<10) return o[n]; return (t[Math.floor(n/10)]+(n%10? ' '+o[n%10]:'')).trim(); },
+      en: n => { if(n===100) return 'one hundred'; const o=['zero','one','two','three','four','five','six','seven','eight','nine'],te=['ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'],t=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety']; if(n<10) return o[n]; if(n<20) return te[n-10]; return t[Math.floor(n/10)]+(n%10? '-'+o[n%10]:''); },
+      es: n => { if(n===100) return 'cien'; const sp={0:'cero',1:'uno',2:'dos',3:'tres',4:'cuatro',5:'cinco',6:'seis',7:'siete',8:'ocho',9:'nueve',10:'diez',11:'once',12:'doce',13:'trece',14:'catorce',15:'quince',16:'dieciséis',17:'diecisiete',18:'dieciocho',19:'diecinueve',20:'veinte',21:'veintiuno',22:'veintidós',23:'veintitrés',24:'veinticuatro',25:'veinticinco',26:'veintiséis',27:'veintisiete',28:'veintiocho',29:'veintinueve'}; if(n in sp) return sp[n]; const t={3:'treinta',4:'cuarenta',5:'cincuenta',6:'sesenta',7:'setenta',8:'ochenta',9:'noventa'},o=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve']; return t[Math.floor(n/10)]+(n%10? ' y '+o[n%10]:''); },
+      de: n => { if(n===100) return 'hundert'; const o=['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun'],te={10:'zehn',11:'elf',12:'zwölf',13:'dreizehn',14:'vierzehn',15:'fünfzehn',16:'sechzehn',17:'siebzehn',18:'achtzehn',19:'neunzehn'},t=['','','zwanzig','dreißig','vierzig','fünfzig','sechzig','siebzig','achtzig','neunzig'],o1=['','ein','zwei','drei','vier','fünf','sechs','sieben','acht','neun']; if(n<10) return o[n]; if(n<20) return te[n]; const tt=Math.floor(n/10),on=n%10; return on===0? t[tt] : o1[on]+'und'+t[tt]; },
+      ru: n => { if(n===100) return 'сто'; const o=['ноль','один','два','три','четыре','пять','шесть','семь','восемь','девять'],te={10:'десять',11:'одиннадцать',12:'двенадцать',13:'тринадцать',14:'четырнадцать',15:'пятнадцать',16:'шестнадцать',17:'семнадцать',18:'восемнадцать',19:'девятнадцать'},t=['','','двадцать','тридцать','сорок','пятьдесят','шестьдесят','семьдесят','восемьдесят','девяносто']; if(n<10) return o[n]; if(n<20) return te[n]; return t[Math.floor(n/10)]+(n%10? ' '+o[n%10]:''); },
+      ja: n => { if(n===100) return 'ひゃく'; const o=['ゼロ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう']; if(n<10) return o[n]; const tt=Math.floor(n/10),on=n%10; return (tt===1?'':o[tt])+'じゅう'+(on? o[on]:''); },
+      ar: n => { if(n===100) return 'مئة'; const o=['صفر','واحد','اثنان','ثلاثة','أربعة','خمسة','ستة','سبعة','ثمانية','تسعة'],te={10:'عشرة',11:'أحد عشر',12:'اثنا عشر',13:'ثلاثة عشر',14:'أربعة عشر',15:'خمسة عشر',16:'ستة عشر',17:'سبعة عشر',18:'ثمانية عشر',19:'تسعة عشر'},t=['','','عشرون','ثلاثون','أربعون','خمسون','ستون','سبعون','ثمانون','تسعون']; if(n<10) return o[n]; if(n<20) return te[n]; const on=n%10; return (on? o[on]+' و':'')+t[Math.floor(n/10)]; }
+    };
+    function num2words(n, lang){
+      n = parseInt(n, 10);
+      const f = NW[lang || state.lang] || NW.en;
+      try { const w = f(n); return (w == null) ? String(n) : w; } catch(e){ return String(n); }
+    }
+    let _voices = [];
+    function loadVoices(){ try { _voices = (window.speechSynthesis && speechSynthesis.getVoices()) || []; } catch(e){} }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      loadVoices();
+      try { speechSynthesis.onvoiceschanged = loadVoices; } catch(e){}
+    }
+    function pickVoice(langCode){
+      if (!_voices.length) loadVoices();
+      const base = langCode.split('-')[0].toLowerCase();
+      return _voices.find(v => v.lang && v.lang.toLowerCase() === langCode.toLowerCase())
+          || _voices.find(v => v.lang && v.lang.toLowerCase().startsWith(base))
+          || null;
+    }
+    function showSpeechToast(msg){
+      let el = document.getElementById('speech-toast');
+      if (el) el.remove();
+      el = document.createElement('div');
+      el.id = 'speech-toast';
+      el.textContent = msg;
+      el.dir = (state.lang === 'ar') ? 'rtl' : 'ltr';
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:90vw;background:#1e293b;color:#fff;font-weight:700;font-size:13px;padding:10px 16px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;text-align:center;line-height:1.4;';
+      document.body.appendChild(el);
+      setTimeout(() => { if (el) el.remove(); }, 3200);
+    }
+    function speakOperation(){
+      if (!('speechSynthesis' in window)) { showSpeechToast(t('speechUnavailable')); return; }
+      const r = state.selectedRow, c = state.selectedCol;
+      if (r == null || c == null) return;
+      const p = r * c;
+      const text = t('speakTmpl', { r:num2words(r), c:num2words(c), p:num2words(p) });
+      const langCode = SPEECH_LANG[state.lang] || 'en-US';
+      loadVoices();
+      const v = pickVoice(langCode);
+      // Voices are known but none match this language → don't mis-read with a wrong-language voice
+      if (!v && _voices.length > 0) { showSpeechToast(t('speechUnavailable')); return; }
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = langCode; u.rate = state.speechRate; u.pitch = 1.05;
+        if (v) u.voice = v;
+        const btn = document.getElementById('speak-btn');
+        if (btn) {
+          btn.classList.add('animate-pulse');
+          const stop = () => btn.classList.remove('animate-pulse');
+          u.onend = stop; u.onerror = stop;
+        }
+        speechSynthesis.speak(u);
+      } catch(e){}
+    }
+    window.speakOperation = speakOperation;
+
+    function speakNumber(n){
+      if (!('speechSynthesis' in window)) return;
+      const langCode = SPEECH_LANG[state.lang] || 'en-US';
+      loadVoices();
+      const v = pickVoice(langCode);
+      if (!v && _voices.length > 0) return; // no proper voice → count silently
+      try {
+        const u = new SpeechSynthesisUtterance(num2words(n));
+        u.lang = langCode; u.rate = Math.max(state.speechRate, 0.9); u.pitch = 1.1;
+        if (v) u.voice = v;
+        speechSynthesis.speak(u);
+      } catch(e){}
+    }
+    window.speakNumber = speakNumber;
+
+    /* ===================== STATE ===================== */
+    const state = {
+      lang: 'tr',
+      tab: 'kesif',
+      selectedRow: 5, selectedCol: 5, selectedNumber: 25,
+      activeGridRows: 5, activeGridCols: 5,
+      hoveredRow: null, hoveredCol: null,
+      showDetails: false,
+      workshopMode: 'mult',
+      workshopProblem: getProblem('mult'),
+      userResult: '', checked: false, isCorrect: false, showMethods: false,
+      counted: {}, _celebrated: false, _lastCountDims: '',
+      speechRate: 0.6
+    };
+  </script>
+
+  <script>
+    /* ===================== AKSİYONLAR ===================== */
+    function applyDir() {
+      const rtl = state.lang === 'ar';
+      document.documentElement.lang = state.lang;
+      document.documentElement.dir = rtl ? 'rtl' : 'ltr';
+      document.body.dir = rtl ? 'rtl' : 'ltr';
+    }
+
+    function setLang(l) { state.lang = l; applyDir(); render(); }
+    window.setLang = setLang;
+
+    function setTab(tabName) { state.tab = tabName; render(); }
+    window.setTab = setTab;
+
+    function setHoveredCell(r, c) { state.hoveredRow = r; state.hoveredCol = c; updateTableHighlights(); }
+    window.setHoveredCell = setHoveredCell;
+    function clearHoveredCell() { state.hoveredRow = null; state.hoveredCol = null; updateTableHighlights(); }
+    window.clearHoveredCell = clearHoveredCell;
+
+    function selectHeader(type, val) {
+      playSelectSound();
+      if (type === 'row') state.selectedRow = (state.selectedRow === val) ? null : val;
+      else state.selectedCol = (state.selectedCol === val) ? null : val;
+      if (state.selectedRow !== null && state.selectedCol !== null) {
+        state.selectedNumber = state.selectedRow * state.selectedCol;
+        state.activeGridRows = state.selectedRow; state.activeGridCols = state.selectedCol;
+      }
+      state.showDetails = false; window.syncInteractiveTable();
+    }
+    window.selectHeader = selectHeader;
+
+    function selectCellDirectly(r, c) {
+      playSelectSound();
+      state.selectedRow = r; state.selectedCol = c; state.selectedNumber = r * c;
+      state.activeGridRows = r; state.activeGridCols = c;
+      state.showDetails = false; window.syncInteractiveTable();
+    }
+    window.selectCellDirectly = selectCellDirectly;
+
+    function handleHorizontalSlider(val) {
+      playSelectSound(); state.selectedCol = parseInt(val);
+      if (state.selectedRow !== null) { state.selectedNumber = state.selectedRow*state.selectedCol; state.activeGridRows=state.selectedRow; state.activeGridCols=state.selectedCol; }
+      window.syncInteractiveTable();
+    }
+    window.handleHorizontalSlider = handleHorizontalSlider;
+
+    function handleVerticalSlider(val) {
+      playSelectSound(); state.selectedRow = 11 - parseInt(val);
+      if (state.selectedCol !== null) { state.selectedNumber = state.selectedRow*state.selectedCol; state.activeGridRows=state.selectedRow; state.activeGridCols=state.selectedCol; }
+      window.syncInteractiveTable();
+    }
+    window.handleVerticalSlider = handleVerticalSlider;
+
+    function toggleDetails() { playSelectSound(); state.showDetails = !state.showDetails; window.syncInteractiveTable(); }
+    window.toggleDetails = toggleDetails;
+
+    function setGridDimensions(r, c) { playSelectSound(); state.activeGridRows = r; state.activeGridCols = c; window.syncInteractiveTable(); }
+    window.setGridDimensions = setGridDimensions;
+
+    function setWorkshopMode(modeKey) {
+      state.workshopMode = modeKey; state.workshopProblem = getProblem(modeKey);
+      state.userResult=''; state.checked=false; state.isCorrect=false; state.showMethods=false; render();
+    }
+    window.setWorkshopMode = setWorkshopMode;
+
+    function refreshWorkshopProblem() {
+      state.workshopProblem = getProblem(state.workshopMode);
+      state.userResult=''; state.checked=false; state.isCorrect=false; state.showMethods=false; render();
+    }
+    window.refreshWorkshopProblem = refreshWorkshopProblem;
+
+    function handleResultInput(val) {
+      state.userResult = val;
+      const btn = document.getElementById('check-btn');
+      if (btn) btn.disabled = val.trim() === '';
+    }
+    window.handleResultInput = handleResultInput;
+    function handleResultKey(e){ if (e.key === 'Enter') { e.preventDefault(); checkResult(); } }
+    window.handleResultKey = handleResultKey;
+
+    function checkResult() {
+      const guess = parseInt((state.userResult||'').trim(), 10);
+      if (isNaN(guess)) return;
+      state.checked = true; state.isCorrect = (guess === state.workshopProblem.answer); state.showMethods = true;
+      if (state.isCorrect) playRewardSound(); else playTone("G3","triangle","4n");
+      render();
+    }
+    window.checkResult = checkResult;
+    function toggleMethods(){ state.showMethods = !state.showMethods; render(); }
+    window.toggleMethods = toggleMethods;
+
+    function resetCount(){ state.counted = {}; state._celebrated = false; if (window.syncInteractiveTable) window.syncInteractiveTable(); }
+    window.resetCount = resetCount;
+
+    function countDot(btn){
+      const key = btn.dataset.key;
+      if (state.counted[key]) {
+        delete state.counted[key];
+        btn.classList.remove('bg-emerald-500','ring-2','ring-emerald-300','dot-counted');
+        btn.classList.add(btn.dataset.block === '1' ? 'bg-indigo-500' : 'bg-pink-500');
+        playTone('A3','sine','64n');
+      } else {
+        state.counted[key] = true;
+        btn.classList.remove('bg-indigo-500','bg-pink-500');
+        btn.classList.add('bg-emerald-500','ring-2','ring-emerald-300');
+        void btn.offsetWidth;
+        btn.classList.add('dot-counted');
+        playTone('E5','sine','64n');
+        floatCount(btn);
+        const _n = Object.keys(state.counted).length;
+        setTimeout(() => speakNumber(_n), 260);
+      }
+      updateCountBadge();
+    }
+    window.countDot = countDot;
+
+    function floatCount(btn){
+      const n = Object.keys(state.counted).length;
+      const rect = btn.getBoundingClientRect();
+      const el = document.createElement('div');
+      el.className = 'count-float';
+      el.style.left = (rect.left + rect.width/2) + 'px';
+      el.style.top = (rect.top + rect.height/2) + 'px';
+      el.textContent = n;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 850);
+    }
+
+    function updateCountBadge(){
+      const total = state.activeGridRows * state.activeGridCols;
+      const n = Object.keys(state.counted).length;
+      const badge = document.getElementById('dot-count-badge');
+      if (!badge) return;
+      const done = n === total && total > 0;
+      if (done) {
+        badge.innerHTML = t('countDone');
+        badge.className = 'text-[11px] font-bold px-3 py-1 rounded-full border bg-emerald-500 text-white border-emerald-500';
+        if (!state._celebrated) { playRewardSound(); state._celebrated = true; }
+      } else {
+        badge.innerHTML = `${t('countedLabel')}: <b>${n}</b> / ${total}`;
+        badge.className = 'text-[11px] font-bold px-3 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200';
+        state._celebrated = false;
+      }
+    }
+    window.updateCountBadge = updateCountBadge;
+
+    function adjustVerticalSliderWidth() {
+      const vContainer = document.querySelector('.vertical-slider-container');
+      const vSlider = document.getElementById('vertical-range-input');
+      if (vContainer && vSlider) vSlider.style.width = `${vContainer.clientHeight - 12}px`;
+    }
+    window.adjustVerticalSliderWidth = adjustVerticalSliderWidth;
+  </script>
+
+  <script>
+    /* ===================== ALAN MODELİ (sayılabilir) ===================== */
+    function renderAreaModel(rows, cols) {
+      const total = rows * cols;
+      let rowsHtml = '';
+      for (let r = 0; r < rows; r++) {
+        let cells = '';
+        for (let c = 0; c < cols; c++) {
+          const gap = (c > 0) ? (c % 5 === 0 ? 'ms-2.5' : 'ms-1') : '';
+          const block = (Math.floor(r/5) + Math.floor(c/5)) % 2 === 0;
+          const key = r + '_' + c;
+          const counted = !!state.counted[key];
+          const color = counted ? 'bg-emerald-500 ring-2 ring-emerald-300' : (block ? 'bg-indigo-500' : 'bg-pink-500');
+          cells += `<button type="button" data-key="${key}" data-block="${block ? 1 : 0}" onclick="countDot(this)" aria-label="${t('countedLabel')}" class="${gap} focusable border-0 p-0 inline-block w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full cursor-pointer transition-transform hover:scale-125 ${color}"></button>`;
+        }
+        const rowGap = (r > 0) ? (r % 5 === 0 ? 'mt-2.5' : 'mt-1') : '';
+        rowsHtml += `<div class="flex items-center ${rowGap}">${cells}</div>`;
+      }
+      const counted = Object.keys(state.counted).length;
+      const done = counted === total && total > 0;
+      const badgeInner = done ? t('countDone') : `${t('countedLabel')}: <b>${counted}</b> / ${total}`;
+      const badgeCls = done ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      return `
+        <div class="inline-flex flex-col items-center">
+          <div class="inline-flex flex-col">${rowsHtml}</div>
+          <div class="mt-3 flex flex-col items-center gap-1.5">
+            <div class="text-xs font-extrabold text-slate-500" dir="ltr">${rows} × ${cols} = ${total}</div>
+            <div class="flex items-center gap-2">
+              <div id="dot-count-badge" class="text-[11px] font-bold px-3 py-1 rounded-full border ${badgeCls}">${badgeInner}</div>
+              <button type="button" onclick="resetCount()" class="focusable text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200">${t('resetCount')}</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderDetailsPanelContent(val) {
+      const pairs = getFactorPairs(val);
+      const factorButtonsHtml = pairs.map(([f1,f2]) => {
+        const active = state.activeGridRows === f1 && state.activeGridCols === f2;
+        return `<button onClick="setGridDimensions(${f1}, ${f2})" class="focusable px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 flex items-center gap-1 ${active ? 'bg-yellow-400 text-slate-950 border-yellow-500 scale-105 font-bold shadow-md' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}" dir="ltr">${f1} × ${f2}</button>`;
+      }).join('');
+
+      const pf = [1, ...getPrimeFactors(val)];
+      let primeFactorsHtml = pf.map((p, idx) => `<span class="px-2.5 py-1 bg-amber-400 text-amber-950 font-bold rounded-lg text-xs shadow-sm">${p}</span>${idx < pf.length-1 ? '<span class="text-amber-600 text-xs">×</span>' : ''}`).join('');
+      primeFactorsHtml += `<span class="text-amber-700 text-sm font-extrabold mx-1">=</span><span class="px-2.5 py-1 bg-amber-500 text-white font-extrabold rounded-lg text-xs shadow-sm">${val}</span>`;
+
+      const divisionHtml = getDivisionExamples(val).map(d => `<div class="bg-white px-2.5 py-1.5 rounded-lg border border-blue-100 text-xs font-medium text-blue-900 flex justify-between shadow-sm" dir="ltr"><span>${d.dividend} ÷ ${d.divisor}</span><span class="text-blue-500 font-bold">= ${val}</span></div>`).join('');
+
+      const areaModelHtml = renderAreaModel(state.activeGridRows, state.activeGridCols);
+
+      return `
+        <h3 class="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">📊 ${t('detailsTitle',{n:val})}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div class="md:col-span-4 bg-slate-900 text-white rounded-2xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div class="absolute end-0 top-0 translate-x-4 -translate-y-4 text-slate-800 opacity-20 pointer-events-none">${getIcon('gitBranch','w-36 h-36')}</div>
+            <div>
+              <span class="text-[10px] font-bold tracking-wider text-indigo-300 uppercase">${t('netStructure')}</span>
+              <div class="flex items-center gap-3 mt-3">
+                <div class="w-12 h-12 bg-gradient-to-tr from-yellow-400 to-purple-600 rounded-xl flex items-center justify-center text-xl font-bold shadow-inner">${val}</div>
+                <div><h4 class="font-extrabold text-sm">${t('equalProducts')}</h4><p class="text-[11px] text-slate-400">${t('equalProductsSub')}</p></div>
+              </div>
+              <div class="flex flex-wrap gap-1.5 mt-4">${factorButtonsHtml}</div>
+            </div>
+          </div>
+          <div class="md:col-span-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider mb-1 flex items-center gap-1">📐 ${t('areaModelLabel',{r:state.activeGridRows,c:state.activeGridCols})}</h4>
+              <p class="text-[11px] text-slate-500 mb-3">${t('areaModelSub')}</p>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center overflow-auto max-h-[280px]" style="justify-content:safe center;">${areaModelHtml}</div>
+          </div>
+          <div class="md:col-span-4 flex flex-col gap-3">
+            <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-200/60">
+              <h4 class="font-bold text-amber-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-1">🧩 ${t('buildingBlocks')}</h4>
+              <div class="flex flex-wrap gap-1.5 items-center" dir="ltr">${primeFactorsHtml}</div>
+            </div>
+            <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-200/60">
+              <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-1">➗ ${t('divisionRelation')}</h4>
+              <div class="space-y-1">${divisionHtml}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+    window.renderDetailsPanelContent = renderDetailsPanelContent;
+  </script>
+
+  <script>
+    /* ===================== HEDEFLİ DOM GÜNCELLEME ===================== */
+    window.syncInteractiveTable = function() {
+      const dimKey = state.activeGridRows + 'x' + state.activeGridCols;
+      if (state._lastCountDims !== dimKey) { state.counted = {}; state._celebrated = false; state._lastCountDims = dimKey; }
+      const row = state.selectedRow, col = state.selectedCol;
+      const product = (row !== null && col !== null) ? (row * col) : '?';
+
+      const rd = document.getElementById('formula-row-display');
+      const cd = document.getElementById('formula-col-display');
+      const rs = document.getElementById('formula-res-display');
+      if (rd) rd.innerText = row ?? '?';
+      if (cd) cd.innerText = col ?? '?';
+      if (rs) rs.innerText = product;
+
+      const btn = document.getElementById('toggle-details-btn');
+      if (btn) btn.innerHTML = `${getIcon('compass','w-4 h-4')} ${state.showDetails ? t('detailsHide') : t('detailsShow',{n:product})}`;
+
+      const hS = document.getElementById('horizontal-range-input');
+      const vS = document.getElementById('vertical-range-input');
+      if (hS) hS.value = col ?? 5;
+      if (vS) vS.value = 11 - (row ?? 5);
+
+      updateTableHighlights();
+
+      const dc = document.getElementById('details-panel-container');
+      if (dc) {
+        if (row !== null && col !== null && state.showDetails) { dc.innerHTML = renderDetailsPanelContent(product); dc.classList.remove('hidden'); }
+        else { dc.innerHTML = ''; dc.classList.add('hidden'); }
+      }
+    };
+
+    function updateTableHighlights() {
+      const rowAct = state.hoveredRow ?? state.selectedRow ?? null;
+      const colAct = state.hoveredCol ?? state.selectedCol ?? null;
+
+      document.querySelectorAll('[id^="th-col-"]').forEach(th => {
+        const col = parseInt(th.id.replace('th-col-',''));
+        const sel = state.selectedCol === col, hov = state.hoveredCol === col;
+        th.className = "focusable cell-size rounded-xl cursor-pointer flex items-center justify-center select-none transition-all duration-300 " +
+          (sel ? "bg-indigo-600 text-white font-black scale-110 shadow-md ring-2 ring-indigo-300" : hov ? "bg-indigo-100 text-indigo-800 scale-105 font-bold" : "bg-slate-100 text-slate-500 font-bold hover:bg-slate-200");
+      });
+      document.querySelectorAll('[id^="th-row-"]').forEach(th => {
+        const row = parseInt(th.id.replace('th-row-',''));
+        const sel = state.selectedRow === row, hov = state.hoveredRow === row;
+        th.className = "focusable cell-size rounded-xl cursor-pointer flex items-center justify-center select-none transition-all duration-300 " +
+          (sel ? "bg-indigo-600 text-white font-black scale-110 shadow-md ring-2 ring-indigo-300" : hov ? "bg-indigo-100 text-indigo-800 scale-105 font-bold" : "bg-slate-100 text-slate-500 font-bold hover:bg-slate-200");
+      });
+      document.querySelectorAll('.table-cell').forEach(td => {
+        const r = parseInt(td.dataset.row), c = parseInt(td.dataset.col);
+        const isRowMatch = r === rowAct, isColMatch = c === colAct;
+        const isInt = r === state.selectedRow && c === state.selectedCol;
+        const isHovInt = r === state.hoveredRow && c === state.hoveredCol;
+        let cls = "table-cell focusable cell-size text-center align-middle cursor-pointer rounded-lg border text-xs sm:text-sm md:text-base font-bold transition-all duration-200 select-none flex items-center justify-center ";
+        if (isInt) cls += "!bg-gradient-to-br !from-amber-400 !to-orange-500 !text-slate-950 font-extrabold ring-4 ring-amber-300 scale-125 z-20 shadow-xl border-amber-500 ";
+        else if (isHovInt) cls += "bg-indigo-500 text-white scale-110 shadow-md z-10 border-indigo-600 ";
+        else if (isRowMatch || isColMatch) cls += "bg-indigo-50/90 text-indigo-900 border-indigo-100 ring-1 ring-indigo-100/50 ";
+        else if (r === c) cls += "bg-amber-100 text-amber-950 font-semibold border-amber-300 ";
+        else if ([1,2,5,10].includes(r) || [1,2,5,10].includes(c)) cls += "bg-blue-50 text-blue-800 border-blue-100/80 ";
+        else if ([3,4].includes(r) || [3,4].includes(c)) cls += "bg-green-50 text-green-800 border-green-100/80 ";
+        else cls += "bg-rose-50 text-rose-800 border-rose-100/80 ";
+        td.className = cls;
+      });
+    }
+  </script>
+
+  <script>
+    /* ===================== ANA RENDER ===================== */
+    function render() {
+      applyDir();
+      const app = document.getElementById('app');
+      const langOptions = LANGS.map(l => `<option value="${l}" style="color:#1e293b;background:#ffffff;font-weight:700" ${state.lang===l?'selected':''}>${I18N[l].ui.langName}</option>`).join('');
+
+      app.innerHTML = `
+        <div class="bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 p-6 text-white text-center relative shadow-inner">
+          <div class="absolute start-3 top-3 z-20 flex items-center gap-1.5 bg-white/15 rounded-xl px-2 py-1.5 backdrop-blur">
+            ${getIcon('globe','w-4 h-4 text-white/90')}
+            <select onchange="setLang(this.value)" aria-label="${t('langSelect')}" class="focusable bg-transparent text-white text-xs font-bold outline-none cursor-pointer">
+              ${langOptions}
+            </select>
+          </div>
+          <div class="absolute end-4 top-4 animate-spin-slow hidden md:block text-yellow-300">${getIcon('sparkles','w-8 h-8')}</div>
+          <h1 class="text-3xl md:text-4xl font-black mb-1 flex justify-center items-center gap-2 tracking-tight">${getIcon('brain','w-8 h-8 text-yellow-300')} ${t('appTitle')}</h1>
+          <p class="text-indigo-100 opacity-90 text-xs sm:text-sm md:text-base max-w-xl mx-auto font-medium">${t('appSubtitle')}</p>
+          <div class="flex flex-wrap justify-center gap-2 mt-5">
+            <button onClick="setTab('kesif')" class="focusable flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm transition-all duration-200 ${state.tab==='kesif' ? 'bg-white text-indigo-700 shadow-lg scale-105' : 'bg-white/10 text-white hover:bg-white/20'}">${getIcon('grid3x3','w-4 h-4')} ${t('tabDiscovery')}</button>
+            <button onClick="setTab('strateji')" class="focusable flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm transition-all duration-200 ${state.tab==='strateji' ? 'bg-white text-indigo-700 shadow-lg scale-105' : 'bg-white/10 text-white hover:bg-white/20'}">${getIcon('brain','w-4 h-4')} ${t('tabStrategy')}</button>
+          </div>
+        </div>
+        <div class="p-4 md:p-6">${state.tab === 'kesif' ? renderDiscoveryTab() : renderStrategyTab()}</div>
+      `;
+
+      if (state.tab === 'kesif') {
+        updateTableHighlights();
+        setTimeout(window.adjustVerticalSliderWidth, 50);
+        setTimeout(window.syncInteractiveTable, 10);
+      }
+    }
+
+    function renderDiscoveryTab() {
+      let gridHtml = '';
+      gridHtml += `<div class="cell-size"></div><div class="cell-size"></div>`;
+      gridHtml += `<div class="col-span-10 flex items-center px-1.5 py-1"><input type="range" min="1" max="10" id="horizontal-range-input" value="${state.selectedCol ?? 5}" oninput="handleHorizontalSlider(this.value)" class="custom-slider w-full h-3.5 rounded-full cursor-pointer focus:outline-none shadow-md" aria-label="${t('col')}"></div>`;
+
+      gridHtml += `<div class="cell-size"></div>`;
+      gridHtml += `<div class="cell-size bg-slate-800 text-white rounded-lg text-sm md:text-base font-black flex items-center justify-center select-none shadow-sm">×</div>`;
+      for (let c = 1; c <= 10; c++)
+        gridHtml += `<button type="button" id="th-col-${c}" onClick="selectHeader('col', ${c})" class="focusable cell-size cursor-pointer rounded-xl text-slate-600 font-bold flex items-center justify-center select-none" aria-label="${t('ariaSelectCol',{n:c})}">${c}</button>`;
+
+      for (let r = 1; r <= 10; r++) {
+        if (r === 1) gridHtml += `<div class="vertical-slider-container" style="grid-row: span 10; height:100%;"><input type="range" min="1" max="10" id="vertical-range-input" value="${11-(state.selectedRow ?? 5)}" oninput="handleVerticalSlider(this.value)" class="custom-slider cursor-pointer focus:outline-none" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(270deg); z-index:30;" aria-label="${t('row')}"></div>`;
+        gridHtml += `<button type="button" id="th-row-${r}" onClick="selectHeader('row', ${r})" class="focusable cell-size cursor-pointer rounded-xl text-slate-600 font-bold flex items-center justify-center select-none" aria-label="${t('ariaSelectRow',{n:r})}">${r}</button>`;
+        for (let c = 1; c <= 10; c++) {
+          const val = r * c;
+          gridHtml += `<button type="button" data-row="${r}" data-col="${c}" onmouseenter="setHoveredCell(${r}, ${c})" onmouseleave="clearHoveredCell()" onfocus="setHoveredCell(${r}, ${c})" onblur="clearHoveredCell()" onclick="selectCellDirectly(${r}, ${c})" class="table-cell focusable cell-size cursor-pointer rounded-lg border flex items-center justify-center select-none" aria-label="${t('ariaCell',{r:r,c:c,v:val})}">${val}</button>`;
+        }
+      }
+
+      const both = state.selectedRow !== null && state.selectedCol !== null;
+      const resVal = both ? state.selectedRow * state.selectedCol : '?';
+
+      return `
+        <div class="mb-6 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white rounded-3xl p-6 shadow-2xl border border-indigo-500/30 relative overflow-hidden flex flex-col items-center justify-center magic-glow">
+          <div class="absolute -start-10 -top-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute -end-10 -bottom-10 w-40 h-40 bg-pink-500/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="text-center mb-4"><span class="text-[10px] uppercase tracking-widest text-indigo-300 font-bold">${t('consoleLabel')}</span></div>
+          <div class="flex items-center justify-center gap-3 sm:gap-6 bg-white/5 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 shadow-lg relative z-10 w-full max-w-lg">
+            <div class="flex flex-col items-center justify-center bg-gradient-to-br from-sky-400 to-blue-600 border border-sky-300/40 px-4 py-2.5 rounded-xl shadow-lg min-w-[70px]">
+              <span class="text-[9px] text-sky-50 font-bold uppercase tracking-wider">${t('row')}</span>
+              <span id="formula-row-display" class="text-2xl md:text-3xl font-black text-white drop-shadow">${state.selectedRow ?? '?'}</span>
+            </div>
+            <span class="text-2xl md:text-3xl font-black text-indigo-400 select-none">×</span>
+            <div class="flex flex-col items-center justify-center bg-gradient-to-br from-pink-400 to-fuchsia-600 border border-pink-300/40 px-4 py-2.5 rounded-xl shadow-lg min-w-[70px]">
+              <span class="text-[9px] text-pink-50 font-bold uppercase tracking-wider">${t('col')}</span>
+              <span id="formula-col-display" class="text-2xl md:text-3xl font-black text-white drop-shadow">${state.selectedCol ?? '?'}</span>
+            </div>
+            <span class="text-2xl md:text-3xl font-black text-purple-400 select-none">=</span>
+            <div class="flex flex-col items-center justify-center bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 font-black px-5 py-3 rounded-xl shadow-lg min-w-[80px] neon-pulse">
+              <span class="text-[9px] text-slate-900/80 font-black uppercase tracking-wider">${t('result')}</span>
+              <span id="formula-res-display" class="text-2xl md:text-3xl font-black">${resVal}</span>
+            </div>
+          </div>
+          <div class="mt-5 relative z-10 flex flex-wrap items-center justify-center gap-2">
+            <button id="speak-btn" onClick="speakOperation()" class="focusable px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/25 text-white font-extrabold rounded-full shadow-lg transition-all active:scale-95 flex items-center gap-2 text-xs">${getIcon('volume2','w-4 h-4')} ${t('readBtn')}</button>
+            <button id="toggle-details-btn" onClick="toggleDetails()" class="focusable px-6 py-2.5 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white font-extrabold rounded-full shadow-lg transition-all active:scale-95 flex items-center gap-2 text-xs">${getIcon('compass','w-4 h-4')} ${state.showDetails ? t('detailsHide') : t('detailsShow',{n:resVal})}</button>
+          </div>
+        </div>
+
+        <div class="bg-white p-3 md:p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center overflow-hidden">
+          <div class="w-full overflow-x-auto flex justify-center pb-2">
+            <div class="grid grid-cols-12 gap-1 p-2 bg-white rounded-2xl shadow-sm border border-slate-100" style="min-width:max-content;" dir="ltr">${gridHtml}</div>
+          </div>
+          <div class="mt-5 flex flex-wrap gap-4 justify-center text-[11px] md:text-xs text-slate-500 font-semibold bg-slate-50 px-4 py-2.5 rounded-full border border-slate-100">
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-blue-100 border border-blue-200 rounded-md"></span> ${t('legendEasy')}</span>
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-green-100 border border-green-200 rounded-md"></span> ${t('legendMedium')}</span>
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-rose-100 border border-rose-200 rounded-md"></span> ${t('legendAdvanced')}</span>
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-200 border border-amber-300 rounded-md"></span> ${t('legendSquare')}</span>
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-md"></span> ${t('legendLocked')}</span>
+          </div>
+        </div>
+        <div id="details-panel-container" class="hidden"></div>
+      `;
+    }
+
+    function renderStrategyTab() {
+      const problem = state.workshopProblem;
+      const MODES = [ {key:'add', icon:'＋', label:t('modeAdd')}, {key:'mult', icon:'×', label:t('modeMult')} ];
+      const modeButtons = MODES.map(m => {
+        const a = state.workshopMode === m.key;
+        return `<button onClick="setWorkshopMode('${m.key}')" class="focusable flex items-center gap-2 px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold border transition-all ${a ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300'}"><span class="text-base font-bold">${m.icon}</span> ${m.label}</button>`;
+      }).join('');
+
+      let feedbackHtml = '';
+      if (state.checked) {
+        if (state.isCorrect) {
+          feedbackHtml = `<div class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 flex items-center gap-3 shadow-sm"><div class="w-12 h-12 shrink-0 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow">${getIcon('check','w-6 h-6')}</div><div><p class="font-extrabold text-emerald-900 text-base">${t('correctTitle')}</p><p class="text-emerald-800 text-xs md:text-sm">${t('correctBody',{op:problem.text, ans:problem.answer})}</p></div></div>`;
+        } else {
+          feedbackHtml = `<div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50/90 p-4 flex items-center gap-3 shadow-sm"><div class="w-12 h-12 shrink-0 rounded-full bg-amber-500 text-white flex items-center justify-center shadow">${getIcon('info','w-6 h-6')}</div><div><p class="font-extrabold text-amber-900 text-base">${t('wrongTitle')}</p><p class="text-amber-800 text-xs md:text-sm">${t('wrongBody')}</p></div></div>`;
+        }
+      }
+
+      let methodsHtml = '';
+      if (state.showMethods) {
+        const palettes = [
+          {bg:'from-sky-50 to-blue-50', border:'border-sky-200', chip:'bg-sky-500', head:'text-sky-900'},
+          {bg:'from-pink-50 to-fuchsia-50', border:'border-pink-200', chip:'bg-pink-500', head:'text-pink-900'},
+          {bg:'from-amber-50 to-orange-50', border:'border-amber-200', chip:'bg-amber-500', head:'text-amber-900'}
+        ];
+        const cards = getMethods(problem).map((mth, i) => {
+          const p = palettes[i % palettes.length];
+          const stepsHtml = mth.steps.map((step, idx) => {
+            const isLast = idx === mth.steps.length - 1;
+            const lead = leadText(step);
+            const expr = step.expr ? `<span dir="ltr" class="inline-block">${step.expr}</span>` : '';
+            const text = lead + ((lead && expr) ? ' ' : '') + expr;
+            return `<div class="flex items-start gap-2.5"><span class="mt-0.5 w-5 h-5 shrink-0 ${isLast ? p.chip+' text-white' : 'bg-white border '+p.border+' text-slate-500'} font-bold rounded-full flex items-center justify-center text-[10px]">${isLast ? getIcon('check','w-3 h-3') : (idx+1)}</span><span class="text-xs md:text-sm leading-relaxed ${isLast ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-700'}">${text}</span></div>`;
+          }).join('');
+          return `<div class="bg-gradient-to-br ${p.bg} border ${p.border} rounded-2xl p-4 shadow-sm"><h4 class="font-extrabold ${p.head} text-sm mb-3 flex items-center gap-2"><span class="text-lg">${mth.icon}</span> ${mth.name}</h4><div class="space-y-2">${stepsHtml}</div></div>`;
+        }).join('');
+        methodsHtml = `<div class="mt-6 border-t border-slate-150 pt-6"><h3 class="font-extrabold text-slate-800 mb-1 flex items-center gap-2 text-sm md:text-base">${getIcon('lightbulb','w-5 h-5 text-indigo-600')} ${t('methodsHeader')}</h3><p class="text-xs text-slate-500 mb-4">${t('methodsSub')}</p><div class="grid grid-cols-1 md:grid-cols-3 gap-3">${cards}</div></div>`;
+      }
+
+      const checkDisabled = state.userResult.trim() === '';
+
+      return `
+        <div class="bg-gradient-to-br from-indigo-50 to-purple-50 p-5 rounded-3xl border border-indigo-100/80 shadow-sm mb-6">
+          <h2 class="text-xl font-extrabold text-slate-800 flex items-center gap-2">🧠 ${t('tabStrategy')}</h2>
+          <p class="text-xs text-slate-500 mt-1">${t('workshopSubtitle')}</p>
+        </div>
+        <div class="bg-white border border-slate-200 p-5 rounded-3xl shadow-sm">
+          <div class="flex flex-wrap justify-start gap-2 mb-6 border-b border-slate-100 pb-5">${modeButtons}</div>
+          <div class="flex items-center justify-between mb-4">
+            <div><span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">${t('targetOp')}</span><h3 class="text-3xl font-black text-indigo-950 tracking-tight mt-0.5" dir="ltr">${problem.text}</h3></div>
+            <button onClick="refreshWorkshopProblem()" class="focusable p-2.5 rounded-xl border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition" aria-label="${t('newProblem')}" title="${t('newProblem')}">${getIcon('refresh','w-5 h-5')}</button>
+          </div>
+          <label class="block text-xs font-bold text-slate-500 mb-2">${t('writeResult')}</label>
+          <div class="flex flex-wrap items-stretch gap-2">
+            <input type="number" inputmode="numeric" id="user-result-input" value="${state.userResult}" oninput="handleResultInput(this.value)" onkeydown="handleResultKey(event)" placeholder="?" aria-label="${t('ariaResultInput')}" dir="ltr" class="focusable w-32 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 outline-none px-4 py-3 text-slate-800 text-2xl font-black text-center transition-all">
+            <button id="check-btn" onClick="checkResult()" ${checkDisabled ? 'disabled' : ''} class="focusable inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md text-sm">${getIcon('check','w-4 h-4')} ${t('check')}</button>
+            ${!state.showMethods ? `<button onClick="toggleMethods()" class="focusable inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition text-sm">💡 ${t('showMethods')}</button>` : ''}
+          </div>
+          ${feedbackHtml}
+          ${methodsHtml}
+        </div>
+      `;
+    }
+
+    window.addEventListener('resize', () => { if (state.tab === 'kesif') window.adjustVerticalSliderWidth(); });
+
+    applyDir();
+    render();
+  </script>
+
+</body>
+</html>
